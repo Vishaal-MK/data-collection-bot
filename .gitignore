@@ -1,3 +1,4 @@
 /database/**
 /.venv/
 /models/**
+app3.py
