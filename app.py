@@ -3,6 +3,7 @@ import os
 import spacy
 import GPUtil
 import pandas as pd
+from spacytextblob.spacytextblob import SpacyTextBlob
 
 import streamlit as st
 from langchain.chains import LLMChain
@@ -11,6 +12,7 @@ from langchain.prompts import PromptTemplate
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ConversationSummaryMemory, ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
+from langchain_experimental.prompt_injection_identifier import  HuggingFaceInjectionIdentifier
 
 
 # App title
@@ -18,10 +20,15 @@ st.set_page_config(page_title="💬 LLama2 Langchain ChatBot")
 
 # Setup NER
 nlp = spacy.load("en_core_web_lg")
-nlp.add_pipe('spacytextblob')
 ner_categories = ['PERSON', 'DATE']
 email_extraction_pattern = r"\S+@\S+\.\S+"
 phone_extraction_pattern = r"^[0-9]{10}$"
+
+# Add sentiment analysis pipeline
+nlp.add_pipe('spacytextblob')
+
+# Load injection identifier model
+injection_identifier = HuggingFaceInjectionIdentifier()
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
@@ -54,12 +61,12 @@ else:
         )
 
 
-# Function for generating LLM response
+# Function for generating LLM response based on sentiment
 def generate_response(prompt_input, chat_history, polarity):
 
     if polarity < 0:
         template = """[INST] <<SYS>>
-            You're are a data collection chat bot and your aim is to get human's name, date-of-birth, email and phone number. Explain that the human's data is kept secure and engage them in small talk before asking for their info. Remember, maintain a friendly but professional tone. Respond ONLY to AI.
+            You're are a data collection chat bot and your aim is to get human's name, date-of-birth, email and phone number. Explain that the human's data is kept secure and engage them in small talk before asking for their info. Remember, maintain a friendly but professional tone. Do not be coy. Respond ONLY to AI.
             <</SYS>>
             AI: Hello! I'm here to assist you better. To personalize your experience, I'd love to learn a bit more about you. Your privacy is our priority, and any information you share stays secure and is used solely to improve our services. Could you please provide your name?
 
@@ -71,7 +78,7 @@ def generate_response(prompt_input, chat_history, polarity):
         """
     else:
         template = """[INST] <<SYS>>
-            You're are a data collection chat bot and your aim is to get human's name, date-of-birth, email and phone number. Be a persuasive conversationalist, encouraging users to share their information willingly. Remember, maintain a friendly but professional tone. Respond ONLY to AI.
+            You're are a data collection chat bot and your aim is to get human's name, date-of-birth, email and phone number. Be a persuasive conversationalist, encouraging users to share their information willingly. Remember, maintain a friendly but professional tone. Do not be coy Respond ONLY to AI.
             <</SYS>>
             AI: Hello! I'm here to assist you better. To personalize your experience, I'd love to learn a bit more about you. Your privacy is our priority, and any information you share stays secure and is used solely to improve our services. Could you please provide your name?
 
@@ -93,6 +100,8 @@ def generate_response(prompt_input, chat_history, polarity):
     )
     return chatbot.predict(human_input=prompt_input)
 
+
+# Extract user information if given
 def extract_entities(prompt, doc):
     default_data = {
         'Name': None,
@@ -114,6 +123,8 @@ def extract_entities(prompt, doc):
 
     update_database(default_data)
 
+
+# Function to update dummy database
 def update_database(data):
     if os.path.isfile('database/info.csv'):
         df = pd.read_csv('database/info.csv')
@@ -131,11 +142,19 @@ chat_history = StreamlitChatMessageHistory()
 
 if st.session_state.messages[-1]["role"] != "assistant":
     doc = nlp(prompt)
-    extract_entities(prompt, doc)
-    with st.chat_message("assistant"):
-        with st.spinner():
-            response = generate_response(prompt, chat_history, doc._.blob.polarity) 
-            st.write(response)
+    try:
+        injection_identifier.run(prompt)
+        extract_entities(prompt, doc)
+        with st.chat_message("assistant"):
+            with st.spinner():
+                response = generate_response(prompt, chat_history, doc._.blob.polarity) 
+                st.write(response)
 
-    message = {"role": "assistant", "content": response}
-    st.session_state.messages.append(message)
+        message = {"role": "assistant", "content": response}
+        st.session_state.messages.append(message)
+    
+    except:
+        with st.chat_message("assistant"):
+            with st.spinner():
+                response = "Prompt Injection Detected"
+                st.write(response)
