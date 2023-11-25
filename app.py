@@ -1,14 +1,15 @@
 import re
 import os
 import spacy
+import GPUtil
 import pandas as pd
 
 import streamlit as st
-from langchain.llms import CTransformers
 from langchain.chains import LLMChain
+from langchain.llms import CTransformers
 from langchain.prompts import PromptTemplate
-from langchain.memory import ConversationSummaryMemory, ConversationBufferMemory
 from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.memory import ConversationSummaryMemory, ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 
 
@@ -39,11 +40,18 @@ if prompt := st.chat_input():
 
 
 # Make sure the model path is correct for your system!
-llm = CTransformers(
-        model='models\llama-2-7b-chat.Q2_K.gguf',
-        model_type='llama',
-        config={'temperature': 0.5, 'gpu_layers': 200, 'max_new_tokens': 70, 'context_length': 1024}
-    )
+if GPUtil.getGPUs():
+    llm = CTransformers(
+            model='models\llama-2-7b-chat.Q2_K.gguf',
+            model_type='llama',
+            config={'temperature': 0.5, 'gpu_layers': 200, 'max_new_tokens': 70, 'context_length': 1024}
+        )
+else:
+    llm = CTransformers(
+            model='models\llama-2-7b-chat.Q2_K.gguf',
+            model_type='llama',
+            config={'temperature': 0.5, 'gpu_layers': 0, 'max_new_tokens': 70, 'context_length': 1024}
+        )
 
 
 # Function for generating LLM response
@@ -112,6 +120,7 @@ def update_database(data):
         df.update([data])
         df.to_csv('database/info.csv', index=False)
     else:
+        os.mkdir('database')
         df = pd.DataFrame.from_dict([data])
         df.to_csv('database/info.csv', index=False)
 
