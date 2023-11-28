@@ -25,7 +25,10 @@ email_extraction_pattern = r"\S+@\S+\.\S+"
 phone_extraction_pattern = r"^[0-9]{10}$"
 
 # Add sentiment analysis pipeline
-sentiment_pipeline = pipeline("sentiment-analysis")
+if GPUtil.getGPUs():
+    sentiment_pipeline = pipeline("sentiment-analysis", device=0)
+else:
+    sentiment_pipeline = pipeline("sentiment-analysis", device=-1)
 
 # Load injection identifier model
 injection_identifier = HuggingFaceInjectionIdentifier()
@@ -51,7 +54,7 @@ if GPUtil.getGPUs():
     llm = CTransformers(
             model='models\llama-2-7b-chat.Q2_K.gguf',
             model_type='llama',
-            config={'temperature': 0.5, 'gpu_layers': 200, 'max_new_tokens': 70, 'context_length': 1024}
+            config={'temperature': 0.5, 'gpu_layers': 50, 'max_new_tokens': 70, 'context_length': 1024}
         )
 else:
     llm = CTransformers(
