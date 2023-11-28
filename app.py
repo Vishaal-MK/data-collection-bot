@@ -32,7 +32,7 @@ injection_identifier = HuggingFaceInjectionIdentifier()
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I'm here to assist you better. To personalize your experience, I'd love to learn a bit more about you. Your privacy is our priority, and any information you share stays secure and is used solely to improve our services. Could you please provide your name?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! How are you feeling today?"}]
 
 # Display chat messages
 for message in st.session_state.messages:
