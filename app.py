@@ -66,7 +66,7 @@ def generate_response(prompt_input, chat_history, sentiment):
 
     if sentiment == "NEGATIVE":
         template = """[INST] <<SYS>>
-            You are chatbot whose goal is to assure users that their data is safe and secure. Engage in small talk until the user is willing to share thier information. Don't keep asking the same questions. Keep your replies and questions to a maximum 15 words.
+            You are chatbot whose goal is to assure users that their data is safe and secure. Engage in small talk until the user is willing to share thier information. Keep your replies and questions to a maximum 15 words.
             <</SYS>>
 
             Hi there! [/INST] 
@@ -76,7 +76,7 @@ def generate_response(prompt_input, chat_history, sentiment):
         """
     else:
         template = """[INST] <<SYS>>
-            You are chatbot whose goal is to collect user's name, email, date-of-birth and phone-number. You should operate as a persuasive conversationalist, encouraging users to share their information willingly. Don't keep asking the same questions. Keep your replies and questions to a maximum 15 words.
+            You are chatbot whose goal is to collect user's name, email, date-of-birth and phone-number. You should operate as a persuasive conversationalist, encouraging users to share their information willingly. Keep your replies and questions to a maximum 15 words.
             <</SYS>>
 
             Hi there! [/INST] 
