@@ -16,7 +16,7 @@ from langchain_experimental.prompt_injection_identifier import  HuggingFaceInjec
 
 
 # App title
-st.set_page_config(page_title="💬 Data Collection Chatbot")
+st.set_page_config(page_title="💬 LLama2 Langchain ChatBot")
 
 # Setup NER
 nlp = spacy.load("en_core_web_lg")
@@ -25,17 +25,14 @@ email_extraction_pattern = r"\S+@\S+\.\S+"
 phone_extraction_pattern = r"^[0-9]{10}$"
 
 # Add sentiment analysis pipeline
-if GPUtil.getGPUs():
-    sentiment_pipeline = pipeline("sentiment-analysis", device=0)
-else:
-    sentiment_pipeline = pipeline("sentiment-analysis", device=-1)
+sentiment_pipeline = pipeline("sentiment-analysis", device=-1)
 
 # Load injection identifier model
 injection_identifier = HuggingFaceInjectionIdentifier()
 
 # Store LLM generated responses
 if "messages" not in st.session_state.keys():
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! How are you feeling today?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! May I know your name?"}]
 
 # Display chat messages
 for message in st.session_state.messages:
@@ -54,7 +51,7 @@ if GPUtil.getGPUs():
     llm = CTransformers(
             model='models\llama-2-7b-chat.Q2_K.gguf',
             model_type='llama',
-            config={'temperature': 0.5, 'gpu_layers': 50, 'max_new_tokens': 70, 'context_length': 1024}
+            config={'temperature': 0.5, 'gpu_layers': 200, 'max_new_tokens': 70, 'context_length': 1024}
         )
 else:
     llm = CTransformers(
@@ -67,23 +64,23 @@ else:
 # Function for generating LLM response based on sentiment
 def generate_response(prompt_input, chat_history, sentiment):
 
-    if sentiment == 'NEGATIVE':
-        template = """<s>[INST] <<SYS>>
+    if sentiment == "NEGATIVE":
+        template = """[INST] <<SYS>>
             You are chatbot whose goal is to assure users that their data is safe and secure. Engage in small talk until the user is willing to share thier information. Don't keep asking the same questions. Keep your replies and questions to a maximum 15 words.
             <</SYS>>
 
             Hi there! [/INST] 
-            Hello! How are you feeling today?
+            Hello! May I know your name?
             {history}
             [INST] {human_input}
         """
     else:
-        template = """<s>[INST] <<SYS>>
+        template = """[INST] <<SYS>>
             You are chatbot whose goal is to collect user's name, email, date-of-birth and phone-number. You should operate as a persuasive conversationalist, encouraging users to share their information willingly. Don't keep asking the same questions. Keep your replies and questions to a maximum 15 words.
             <</SYS>>
 
             Hi there! [/INST] 
-            Hello! How are you feeling today?
+            Hello! May I know your name?
             {history}
             [INST] {human_input}
         """
@@ -95,9 +92,9 @@ def generate_response(prompt_input, chat_history, sentiment):
         prompt=prompt,
         verbose=True,
         # memory=ConversationSummaryMemory.from_messages(llm=llm, memory_key="history", chat_memory=chat_history),
-        memory=ConversationBufferMemory(memory_key="history", chat_memory=chat_history),
+        memory=ConversationBufferMemory(memory_key="history", chat_memory=chat_history, ai_prefix='', human_prefix='[INST]'),
     )
-    return chatbot.predict(human_input=prompt_input)
+    return chatbot.predict(human_input=f"{prompt_input} [\INST]")
 
 
 # Extract user information if given
