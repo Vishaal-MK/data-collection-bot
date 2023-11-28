@@ -25,7 +25,7 @@ email_extraction_pattern = r"\S+@\S+\.\S+"
 phone_extraction_pattern = r"^[0-9]{10}$"
 
 # Add sentiment analysis pipeline
-sentiment_pipeline = pipeline("sentiment-analysis", device=-1)
+sentiment_pipeline = pipeline("sentiment-analysis", device=-1, model="lxyuan/distilbert-base-multilingual-cased-sentiments-student")
 
 # Load injection identifier model
 injection_identifier = HuggingFaceInjectionIdentifier()
@@ -138,7 +138,7 @@ chat_history = StreamlitChatMessageHistory()
 
 if st.session_state.messages[-1]["role"] != "assistant":
     doc = nlp(prompt)
-    sentiment = sentiment_pipeline(prompt)[0]['label']
+    sentiment = sentiment_pipeline(prompt)[0]
     try:
         injection_identifier.run(prompt)
         extract_entities(prompt, doc)
