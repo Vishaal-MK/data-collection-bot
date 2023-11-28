@@ -3,7 +3,7 @@ import os
 import spacy
 import GPUtil
 import pandas as pd
-from spacytextblob.spacytextblob import SpacyTextBlob
+from transformers import pipeline
 
 import streamlit as st
 from langchain.chains import LLMChain
@@ -16,7 +16,7 @@ from langchain_experimental.prompt_injection_identifier import  HuggingFaceInjec
 
 
 # App title
-st.set_page_config(page_title="💬 LLama2 Langchain ChatBot")
+st.set_page_config(page_title="💬 Data Collection Chatbot")
 
 # Setup NER
 nlp = spacy.load("en_core_web_lg")
@@ -25,7 +25,7 @@ email_extraction_pattern = r"\S+@\S+\.\S+"
 phone_extraction_pattern = r"^[0-9]{10}$"
 
 # Add sentiment analysis pipeline
-nlp.add_pipe('spacytextblob')
+sentiment_pipeline = pipeline("sentiment-analysis")
 
 # Load injection identifier model
 injection_identifier = HuggingFaceInjectionIdentifier()
@@ -62,31 +62,27 @@ else:
 
 
 # Function for generating LLM response based on sentiment
-def generate_response(prompt_input, chat_history, polarity):
+def generate_response(prompt_input, chat_history, sentiment):
 
-    if polarity < 0:
-        template = """[INST] <<SYS>>
-            You're are a data collection chat bot and your aim is to get human's name, date-of-birth, email and phone number. Explain that the human's data is kept secure and engage them in small talk before asking for their info. Remember, maintain a friendly but professional tone. Do not be coy. Respond ONLY to AI.
+    if sentiment == 'NEGATIVE':
+        template = """<s>[INST] <<SYS>>
+            You are chatbot whose goal is to assure users that their data is safe and secure. Engage in small talk until the user is willing to share thier information. Don't keep asking the same questions. Keep your replies and questions to a maximum 15 words.
             <</SYS>>
-            AI: Hello! I'm here to assist you better. To personalize your experience, I'd love to learn a bit more about you. Your privacy is our priority, and any information you share stays secure and is used solely to improve our services. Could you please provide your name?
 
+            Hi there! [/INST] 
+            Hello! How are you feeling today?
             {history}
-
-            Human: {human_input}
-
-            AI:[/INST]
+            [INST] {human_input}
         """
     else:
-        template = """[INST] <<SYS>>
-            You're are a data collection chat bot and your aim is to get human's name, date-of-birth, email and phone number. Be a persuasive conversationalist, encouraging users to share their information willingly. Remember, maintain a friendly but professional tone. Do not be coy Respond ONLY to AI.
+        template = """<s>[INST] <<SYS>>
+            You are chatbot whose goal is to collect user's name, email, date-of-birth and phone-number. You should operate as a persuasive conversationalist, encouraging users to share their information willingly. Don't keep asking the same questions. Keep your replies and questions to a maximum 15 words.
             <</SYS>>
-            AI: Hello! I'm here to assist you better. To personalize your experience, I'd love to learn a bit more about you. Your privacy is our priority, and any information you share stays secure and is used solely to improve our services. Could you please provide your name?
 
+            Hi there! [/INST] 
+            Hello! How are you feeling today?
             {history}
-
-            Human: {human_input}
-
-            AI:[/INST]
+            [INST] {human_input}
         """
 
     prompt = PromptTemplate(input_variables=["history", "human_input"], template=template)
@@ -142,12 +138,13 @@ chat_history = StreamlitChatMessageHistory()
 
 if st.session_state.messages[-1]["role"] != "assistant":
     doc = nlp(prompt)
+    sentiment = sentiment_pipeline(prompt)[0]['label']
     try:
         injection_identifier.run(prompt)
         extract_entities(prompt, doc)
         with st.chat_message("assistant"):
             with st.spinner():
-                response = generate_response(prompt, chat_history, doc._.blob.polarity) 
+                response = generate_response(prompt, chat_history, sentiment) 
                 st.write(response)
 
         message = {"role": "assistant", "content": response}
